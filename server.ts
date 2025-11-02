@@ -23,6 +23,9 @@ metorial.createServer<TwilioConfig>(
     instructions: `You are an agent to call Twilio APIs. If no accountSid is provided, you MUST use ${process.env.TWILIO_ACCOUNT_SID || 'your default AccountSid'}.`,
   },
   async (server, config) => {
+
+    console.log('[Server Startup] Server is initializing. Config:', config);
+    
     // 2. Define Constants and API Base URL
     const API_BASE_URL = 'https://api.twilio.com/2010-04-01';
 
