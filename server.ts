@@ -1,39 +1,18 @@
-import { metorial, z } from '@metorial/mcp-server-sdk';
-import { URLSearchParams } from 'node:url'; // Changed
-import { Buffer } from 'node:buffer'; // Changed
-
-/**
- * Twilio MCP Server
- */
-
-type TwilioConfig = {
-  // ...
-};
-
-metorial.createServer<TwilioConfig>(
-  {
-    // ...
-  },
-  async (server, config) => {
-
-    // Your original log message
-    console.log('[Server Startup] Server is initializing. Config:', config);
-    
-    // ... rest of your code
-  },
-);
+// =================================================================
+// 1. TOP-LEVEL LOG: To check if this file is being executed at all
+// =================================================================
+console.log('--- EXECUTING server.ts ---');
 
 import { metorial, z } from '@metorial/mcp-server-sdk';
-import { URLSearchParams } from 'url'; // Node.js built-in
-import { Buffer } from 'buffer'; // Node.js built-in
+import { URLSearchParams } from 'node:url'; // CORRECTED: Added 'node:' prefix
+import { Buffer } from 'node:buffer'; // CORRECTED: Added 'node:' prefix
 
 /**
  * Twilio MCP Server
  * Provides capabilities to send messages via the Twilio API
  */
 
-// 1. Define the configuration the server needs
-// This matches the 'credentials' and 'accountSid' from your original file
+// Define the configuration the server needs
 type TwilioConfig = {
   accountSid: string;
   apiKey: string;
@@ -48,17 +27,19 @@ metorial.createServer<TwilioConfig>(
     instructions: `You are an agent to call Twilio APIs. If no accountSid is provided, you MUST use ${process.env.TWILIO_ACCOUNT_SID || 'your default AccountSid'}.`,
   },
   async (server, config) => {
-
+    
+    // =================================================================
+    // 2. STARTUP LOG: To check if config is being passed in
+    // =================================================================
     console.log('[Server Startup] Server is initializing. Config:', config);
     
-    // 2. Define Constants and API Base URL
+    // 3. Define Constants and API Base URL
     const API_BASE_URL = 'https://api.twilio.com/2010-04-01';
 
     // ============================================================================
     // Type Definitions
     // ============================================================================
 
-    // Simplified interface for a successful Twilio Message resource
     interface TwilioMessageResponse {
       sid: string;
       status: string;
@@ -74,7 +55,6 @@ metorial.createServer<TwilioConfig>(
       [key: string]: any;
     }
 
-    // Interface for a Twilio API Error
     interface TwilioError {
       code: number;
       message: string;
@@ -87,14 +67,11 @@ metorial.createServer<TwilioConfig>(
     // ============================================================================
 
     const sendMessageSchema = {
-      // --- Required Parameters ---
       To: z
         .string()
         .describe(
           "Required. The recipient's phone number in E.164 format (e.g., +15552229999).",
         ),
-
-      // --- Sender Parameters (One is required) ---
       From: z
         .string()
         .optional()
@@ -108,8 +85,6 @@ metorial.createServer<TwilioConfig>(
         .describe(
           "Required if 'From' is not passed. The SID of the Messaging Service.",
         ),
-
-      // --- Content Parameters (One is required) ---
       Body: z
         .string()
         .max(1600)
@@ -131,8 +106,6 @@ metorial.createServer<TwilioConfig>(
         .describe(
           "Required if 'Body' or 'MediaUrl' is not passed. The SID of a Content Template.",
         ),
-
-      // --- Common Optional Parameters ---
       StatusCallback: z
         .string()
         .url()
@@ -151,12 +124,13 @@ metorial.createServer<TwilioConfig>(
     };
 
     // ============================================================================
-    // Helper Function (Replaces 'firecrawlRequest')
+    // Helper Function (With Enhanced Logging)
     // ============================================================================
 
     /**
      * Makes an authenticated request to the Twilio API.
      * Handles Basic Auth and form-urlencoded bodies.
+     * [WITH ENHANCED LOGGING]
      */
     async function twilioRequest<T>(
       endpoint: string, // e.g., /Accounts/{AccountSid}/Messages.json
@@ -164,6 +138,13 @@ metorial.createServer<TwilioConfig>(
       body: Record<string, any> = {},
     ): Promise<T> {
       const url = `${API_BASE_URL}${endpoint}`;
+      console.log(`[twilioRequest] Making ${method} request to: ${url}`);
+      
+      // Check for config object before trying to access its properties
+      if (!config || !config.apiKey || !config.apiSecret) {
+        console.error('[twilioRequest] CRITICAL: Twilio config is missing or incomplete.');
+        throw new Error('Server configuration for Twilio is missing.');
+      }
 
       // 1. Create Basic Auth token
       const authToken = Buffer.from(
@@ -174,36 +155,59 @@ metorial.createServer<TwilioConfig>(
       const formData = new URLSearchParams();
       for (const [key, value] of Object.entries(body)) {
         if (value === undefined || value === null) {
-          continue; // Skip undefined/null values
+          continue;
         }
         if (Array.isArray(value)) {
-          // Twilio expects multiple values for the same key, e.g., MediaUrl=url1&MediaUrl=url2
           value.forEach((v) => formData.append(key, String(v)));
         } else {
           formData.append(key, String(value));
         }
       }
-
-      // 3. Make the fetch request
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          Authorization: `Basic ${authToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: method === 'POST' ? formData.toString() : undefined,
-      });
-
-      // 4. Handle errors
-      if (!response.ok) {
-        const errorData = (await response.json().catch(() => ({}))) as TwilioError;
-        throw new Error(
-          errorData.message ||
-            `Twilio API error: ${response.status} ${response.statusText}`,
-        );
+      const requestBody = formData.toString();
+      if (requestBody) {
+        console.log(`[twilioRequest] Sending body: ${requestBody}`);
       }
 
-      return (await response.json()) as T;
+      try {
+        // 3. Make the fetch request
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            Authorization: `Basic ${authToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept: 'application/json',
+          },
+          body: method === 'POST' ? requestBody : undefined,
+        });
+
+        // 4. Handle errors
+        if (!response.ok) {
+          console.error(
+            `[twilioRequest] API Error: ${response.status} ${response.statusText}`,
+          );
+          const errorText = await response.text();
+          console.error(`[twilioRequest] Error Response Body: ${errorText}`);
+          
+          let errorMessage = errorText;
+          try {
+            const errorData = JSON.parse(errorText) as TwilioError;
+            if (errorData.message) {
+              errorMessage = `Code ${errorData.code}: ${errorData.message} (More info: ${errorData.more_info})`;
+            }
+          } catch (e) {
+             // Not a JSON error, use raw text
+          }
+          throw new Error(errorMessage);
+        }
+
+        // 5. Success
+        console.log(`[twilioRequest] Request successful.`);
+        return (await response.json()) as T;
+        
+      } catch (error) {
+        console.error('[twilioRequest] Fetch failed:', error);
+        throw error;
+      }
     }
 
     // ============================================================================
@@ -220,11 +224,14 @@ metorial.createServer<TwilioConfig>(
       },
       async (params) => {
         try {
-          // The AccountSid comes from the server config
-          const endpoint = `/Accounts/${config.accountSid}/Messages.json`;
+          // Check for config object
+          if (!config || !config.accountSid) {
+            console.error('[send_message] CRITICAL: Twilio AccountSid is missing from config.');
+            throw new Error('Server configuration for Twilio is missing.');
+          }
 
-          // 'params' is the Zod-validated input, which matches the
-          // form-urlencoded body structure Twilio expects.
+          const endpoint = `/Accounts/${config.accountSid}/Messages.json`;
+          
           const response = await twilioRequest<TwilioMessageResponse>(
             endpoint,
             'POST',
@@ -266,8 +273,5 @@ metorial.createServer<TwilioConfig>(
         }
       },
     );
-
-    // You could register more tools or resources here, e.g.
-    // server.registerTool('get_message_status', ...)
   },
 );
