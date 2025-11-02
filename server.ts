@@ -1,3 +1,33 @@
+// =================================================================
+// >>> ADD THIS LINE AT THE VERY TOP <<<
+console.log('--- EXECUTING server.ts ---');
+// =================================================================
+
+import { metorial, z } from '@metorial/mcp-server-sdk';
+import { URLSearchParams } from 'node:url'; // Changed
+import { Buffer } from 'node:buffer'; // Changed
+
+/**
+ * Twilio MCP Server
+ */
+
+type TwilioConfig = {
+  // ...
+};
+
+metorial.createServer<TwilioConfig>(
+  {
+    // ...
+  },
+  async (server, config) => {
+
+    // Your original log message
+    console.log('[Server Startup] Server is initializing. Config:', config);
+    
+    // ... rest of your code
+  },
+);
+
 import { metorial, z } from '@metorial/mcp-server-sdk';
 import { URLSearchParams } from 'url'; // Node.js built-in
 import { Buffer } from 'buffer'; // Node.js built-in
