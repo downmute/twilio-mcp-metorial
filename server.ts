@@ -1,8 +1,3 @@
-// =================================================================
-// >>> ADD THIS LINE AT THE VERY TOP <<<
-console.log('--- EXECUTING server.ts ---');
-// =================================================================
-
 import { metorial, z } from '@metorial/mcp-server-sdk';
 import { URLSearchParams } from 'node:url'; // Changed
 import { Buffer } from 'node:buffer'; // Changed
