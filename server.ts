@@ -1,6 +1,6 @@
 import { metorial, z } from '@metorial/mcp-server-sdk.ts';
-import { URLSearchParams } from 'url.ts'; // Node.js built-in
-import { Buffer } from 'buffer.ts'; // Node.js built-in
+import { URLSearchParams } from 'url.js'; // Node.js built-in
+import { Buffer } from 'buffer.js'; // Node.js built-in
 
 /**
  * Twilio MCP Server
