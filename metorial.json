@@ -1,0 +1,4 @@
+{
+  "name": "Twilio MCP Server",
+  "runtime": "typescript.deno"
+}
